@@ -1,0 +1,14 @@
+INFO     log:logger_util.py:79 ---------------------------------------------接口请求开始---------------------------------------------
+INFO     log:logger_util.py:79 接口名称：文件上传接口
+INFO     log:logger_util.py:79 请求方式:post
+INFO     log:logger_util.py:79 请求路径:https://api.weixin.qq.com/cgi-bin/media/uploadimg?access_token=72_1KGWNxsa7x4_ULwv3QoGNFGBKFm8t9SpF1zDJfhIwdt3CZm9Qpx9CaQFFuRXG0TdXBgJMvCycwN7J9y3O_2sFNqG9q38JcUXCWA0_AQ-8g-xDmbVxAbEZ18FPwUHAQcAAABUK
+INFO     log:logger_util.py:79 请求头：{}
+INFO     log:logger_util.py:79 文件上传：{'media': <_io.BufferedReader name='./logo.jpg'>}
+INFO     log:logger_util.py:79 响应头：content_type:text/plain
+INFO     log:logger_util.py:79 预期结果：[{'equals': {'status_code': 200}}, {'contains': 'url'}]
+INFO     log:logger_util.py:79 实际结果：{"url":"http:\/\/mmbiz.qpic.cn\/mmbiz_png\/6xVTVmZiagzQ5uU5ljOViaEnicPb4TBC9R9Tola1P0PXAB5ciaf2SWqjiaJGu57vY12VzwrE3EBu6bmmP6licQw1s7sw\/0"}
+INFO     log:logger_util.py:79 接口请求成功！
+INFO     log:logger_util.py:79 -------------------------------------------接口请求结束---------------------------------------------
+INFO     log:logger_util.py:79 -------------------------------------------单条数据查询成功！-------------------------------------------
+INFO     log:logger_util.py:79 接口自动化测试垃圾数据处理结果为：{'id': 108100, 'reg_name': '裴育', 'pwd': '25D55AD283AA400AF464C76D713C07AD', 'mobile_phone': '18326074762', 'type': 1, 'leave_amount': Decimal('12500005.00'), 'reg_time': datetime.datetime(2023, 5, 8, 17, 42, 27)}
+INFO     log:logger_util.py:79 -----------------------------------------------接口自动化测试结束------------------------------------------------

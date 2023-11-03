@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>tmreport</title>
+  <meta charset="UTF-8">
+  <!-- import CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+<!--  <script src="echarts.min.js"></script>-->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/echarts@5.1.2/dist/echarts.min.js"></script>
+   <!--导入js库-->
+  <script src="https://cdn.bootcss.com/ace/1.2.6/ace.js" type="text/javascript" charset="utf-8"></script>
+</head>
+<body>
+  <div id="app">
+    <el-container>
+      <el-header>
+        <h2 class="el-icon-document-copy">自动化测试报告</h2>
+      </el-header>
+      <el-container>
+        <el-aside width="500px" style="margin-top: 20px">
+          <el-card shadow="hover" style=";margin-bottom: 20px">
+            <h3>执行成功率</h3>
+            <div id="main" style="width: 500px;height:430px"></div>
+          </el-card>
+          <el-card shadow="hover">
+            <div id="main2" style="width: 500px;height:430px;"></div>
+          </el-card>
+        </el-aside>
+        <el-main>
+           <el-row>
+             <el-col :span="7">
+                <el-card shadow="hover">
+                  <span style="font-size: small ">本次执行情况</span>
+                   <el-tag type="primary" label="执行结果" effect="dark" style="float: right" size="small">执行</el-tag>
+                  <el-divider></el-divider>
+                  <span style="font-size: large; color: dodgerblue">本次共执行用例 {{summary.total}} 条</span>
+                  <el-divider></el-divider>
+                  <span style="font-size: small ">成功率 {{(summary.success_rate * 100).toFixed(2)}}% </span>
+                </el-card>
+             </el-col>
+             <el-col :span="7">
+                <el-card shadow="hover">
+                  <span style="font-size: small ">异常情况</span>
+                   <el-tag type="danger" label="执行结果" effect="dark" style="float: right" size="small">异常</el-tag>
+                  <el-divider></el-divider>
+                  <span style="font-size: large; color: indianred">本次共有失败用例 {{summary.failed}} 条</span>
+                  <el-divider></el-divider>
+                  <span style="font-size: small ">失败率 {{(summary.fail_rate * 100).toFixed(2)}}% </span>
+                </el-card>
+             </el-col>
+             <el-col :span="7">
+                <el-card shadow="hover">
+                  <span style="font-size: small ">持续执行</span>
+                   <el-tag type="warning" label="执行结果" effect="dark" style="float: right" size="small">持续</el-tag>
+                  <el-divider></el-divider>
+                  <span style="font-size: large; color: #e6a23c">本次持续运行 {{summary.duration.toFixed(4)}}s</span>
+                  <el-divider></el-divider>
+                  <span style="font-size: small ">平均Case执行时间 {{(summary.avg_duration * 1000).toFixed(2)}} ms</span>
+                </el-card>
+             </el-col>
+           </el-row>
+           <el-card shadow="hover" style="margin-top: 20px">
+             <h3>用例执行记录</h3>
+             <el-alert
+                     class="el-icon-info"
+                    title="点击可展开下方详细日志"
+                    type="warning"
+                    effect="dark">
+              </el-alert>
+              <el-table
+                :data="data.slice((currentPage-1)*pageSize,currentPage*pageSize)"
+                stripe
+                style="width: 100%"
+                height="600"
+                size="medium"
+                @expand-change="expend"
+                :row-key='getRowKeys'
+                :expand-row-keys="expands"
+                @filter-change="fliterChange"
+              >
+                 <el-table-column type="expand"  width="100" prop="logs">
+                  <template slot-scope="scope">
+                      <el-card class="content">
+                          <pre id="editor" class="ace_editor" style="min-height:400px">
+                            <textarea class="ace_text-input">{{scope.row.logs}}</textarea>
+                          </pre>
+                          <script type="application/javascript">
+                            var editor = ace.edit('editor')
+                              //设置风格和语言（更多风格和语言，请到github上相应目录查看）
+                            theme = "clouds"
+                            language = "python"
+                            editor.setTheme("ace/theme/" + theme);
+                            editor.session.setMode("ace/mode/" + language);
+
+                            //字体大小
+                            editor.setFontSize(10);
+
+                            //设置只读（true时只读，用于展示代码）
+                            editor.setReadOnly(true);
+
+                            //自动换行,设置为off关闭
+                            editor.setOption("wrap", "free")
+
+                          </script>
+                      </el-card>
+                     </template>
+                  </el-table-column>
+                <el-table-column
+                  label="ID"
+                  type="index"
+                  :index="count"
+                  width="80"
+                >
+                </el-table-column>
+                <el-table-column
+                  prop="title"
+                  label="Case"
+                  width="300"
+                >
+                </el-table-column>
+
+                <el-table-column
+                  prop="time"
+                  label="Time"
+                  width="200">
+                </el-table-column>
+                <el-table-column
+                  prop="result"
+                  label="Result"
+                  :filters="[{ text: '成功', value: 1 }, { text: '失败', value: 0 }]"
+                  column-key="result"
+                  width="100"
+                >
+                  <template slot-scope="scope">
+                    <i class="el-icon-circle-check" style="color: green;font-size: large" v-if="scope.row.result==1"></i>
+                    <i class="el-icon-circle-close" style="color: red;font-size: large" v-if="scope.row.result==0"></i>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  prop="doc"
+                  label="Doc"
+                  width="250">
+                </el-table-column>
+                <el-table-column
+                  prop="duration"
+                  label="Duration"
+                  width="150">
+                  <template slot-scope="scope">
+                    <span>{{(scope.row.duration*1000).toFixed(2)}} ms</span>
+                  </template>
+                </el-table-column>
+
+              </el-table>
+               <div class="block" style="margin-top: 20px">
+                    <el-pagination
+                      @size-change="handleSizeChange"
+                      @current-change="handleCurrentChange"
+                      :current-page="currentPage"
+                      :page-sizes="[10, 20, 50, 100]"
+                      :page-size="pageSize"
+                      layout="total, sizes, prev, pager, next, jumper"
+                      :total="data.length">
+                    </el-pagination>
+                  </div>
+           </el-card>
+        </el-main>
+      </el-container>
+    </el-container>
+  </div>
+</body>
+
+  <!-- import Vue before Element -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.7.8/dist/vue.js"></script>
+  <!-- import JavaScript -->
+  <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+
+
+  <script>
+
+    new Vue({
+      el: '#app',
+      data: function() {
+        return {
+          visible: false,
+          dialogVisible: false,
+          data: [],
+          tableData: [{'id': 1691192438.9183068, 'title': 'testcases/weixin/test_weixin.py::TestLogin::test_get_token[caseinfo0]', 'logs': "Captured log setup\nINFO     log:logger_util.py:76 -------------------------------------------接口自动化测试开始--------------------------------------------\nINFO     log:logger_util.py:76 -------------------------------------成功连接到Mysql数据库！--------------------------------------\nCaptured log call\nINFO     log:logger_util.py:76 ---------------------------------------接口请求开始---------------------------------------\nINFO     log:logger_util.py:76 接口名称：获取access_token统一鉴权码\nINFO     log:logger_util.py:76 请求方式:get\nINFO     log:logger_util.py:76 请求路径:https://api.weixin.qq.com/cgi-bin/token\nINFO     log:logger_util.py:76 请求头：{}\nINFO     log:logger_util.py:76 请求参数：{'appid': 'wx8cbefbfc3b8c2f3b', 'secret': '4fa4582bf6b362742f079a3b7709ccad', 'grant_type': 'client_credential'}\nINFO     log:logger_util.py:76 文件上传：None\nINFO     log:logger_util.py:76 响应头：content_type:application/json; encoding=utf-8\nINFO     log:logger_util.py:76 预期结果：[{'equals': {'status_code': 200}}, {'contains': 'access_token'}]\nINFO     log:logger_util.py:76 实际结果：{'access_token': '71_aWVLgb4Py_DoS8pkm9bEE3MwJLYjakc9R0ogfcry7IT7CZ29Eeo4g9fLeGLZrATWB43s1_rClXOJYPlz_vPimeS0CHHMFY3rUvIdatBGJSMrS_kq9Zvj6xS7tcEJHRhAAAWUE', 'expires_in': 7200}\nINFO     log:logger_util.py:76 接口请求成功！\nINFO     log:logger_util.py:76 ---------------------------------------接口请求结束---------------------------------------\n", 'result': 1, 'duration': 0.5093703996390104, 'doc': '', 'time': '2023-08-05 07:40:38'}, {'id': 1691192438.9874768, 'title': 'testcases/weixin/test_weixin.py::TestLogin::test_get_token[caseinfo1]', 'logs': "Captured log call\nINFO     log:logger_util.py:76 ---------------------------------------接口请求开始---------------------------------------\nINFO     log:logger_util.py:76 接口名称：appid必填项检查\nINFO     log:logger_util.py:76 请求方式:get\nINFO     log:logger_util.py:76 请求路径:https://api.weixin.qq.com/cgi-bin/token\nINFO     log:logger_util.py:76 请求头：{}\nINFO     log:logger_util.py:76 请求参数：{'appid': '', 'secret': '4fa4582bf6b362742f079a3b7709ccad', 'grant_type': 'client_credential'}\nINFO     log:logger_util.py:76 文件上传：None\nINFO     log:logger_util.py:76 响应头：content_type:application/json; encoding=utf-8\n", 'result': 1, 'duration': 0.05514249950647354, 'doc': '', 'time': '2023-08-05 07:40:38'}, {'id': 1691192439.0874743, 'title': 'testcases/weixin/test_weixin.py::TestLogin::test_get_token[caseinfo2]', 'logs': "Captured log call\nINFO     log:logger_util.py:76 ---------------------------------------接口请求开始---------------------------------------\nINFO     log:logger_util.py:76 接口名称：secret必填项检查\nINFO     log:logger_util.py:76 请求方式:get\nINFO     log:logger_util.py:76 请求路径:https://api.weixin.qq.com/cgi-bin/token\nINFO     log:logger_util.py:76 请求头：{}\nINFO     log:logger_util.py:76 请求参数：{'appid': 'wx8cbefbfc3b8c2f3b', 'secret': '', 'grant_type': 'client_credential'}\nINFO     log:logger_util.py:76 文件上传：None\nINFO     log:logger_util.py:76 响应头：content_type:application/json; encoding=utf-8\n", 'result': 1, 'duration': 0.09283330012112856, 'doc': '', 'time': '2023-08-05 07:40:39'}, {'id': 1691192439.2427158, 'title': 'testcases/weixin/test_weixin.py::TestFlag::test_create_flag[caseinfo0]', 'logs': "Captured log call\nINFO     log:logger_util.py:76 ---------------------------------------接口请求开始---------------------------------------\nINFO     log:logger_util.py:76 接口名称：创建标签接口\nINFO     log:logger_util.py:76 请求方式:post\nINFO     log:logger_util.py:76 请求路径:https://api.weixin.qq.com/cgi-bin/tags/create?access_token=71_aWVLgb4Py_DoS8pkm9bEE3MwJLYjakc9R0ogfcry7IT7CZ29Eeo4g9fLeGLZrATWB43s1_rClXOJYPlz_vPimeS0CHHMFY3rUvIdatBGJSMrS_kq9Zvj6xS7tcEJHRhAAAWUE\nINFO     log:logger_util.py:76 请求头：{}\nINFO     log:logger_util.py:76 请求参数：{'tag': {'name': '裴育15284'}}\nINFO     log:logger_util.py:76 文件上传：None\nINFO     log:logger_util.py:76 响应头：content_type:application/json; encoding=utf-8\nINFO     log:logger_util.py:76 预期结果：[{'equals': {'status_code': 200}}, {'contains': 'tag'}]\nINFO     log:logger_util.py:76 实际结果：{'errcode': 45056, 'errmsg': 'too many tag now, no need to add new hint: [TdcDNXnre-sggEIa] rid: 64cd8c77-532ce955-717a367d'}\nINFO     log:logger_util.py:76 接口请求成功！\nINFO     log:logger_util.py:76 ---------------------------------------接口请求结束---------------------------------------\n", 'result': 1, 'duration': 0.14537779986858368, 'doc': '', 'time': '2023-08-05 07:40:39'}, {'id': 1691192439.4126031, 'title': 'testcases/weixin/test_weixin.py::TestFlag::test_select_flag[caseinfo0]', 'logs': "Captured log call\nINFO     log:logger_util.py:76 ---------------------------------------接口请求开始---------------------------------------\nINFO     log:logger_util.py:76 接口名称：获取标签列表\nINFO     log:logger_util.py:76 请求方式:get\nINFO     log:logger_util.py:76 请求路径:https://api.weixin.qq.com/cgi-bin/tags/get\nINFO     log:logger_util.py:76 请求头：{}\nINFO     log:logger_util.py:76 请求参数：{'access_token': '71_aWVLgb4Py_DoS8pkm9bEE3MwJLYjakc9R0ogfcry7IT7CZ29Eeo4g9fLeGLZrATWB43s1_rClXOJYPlz_vPimeS0CHHMFY3rUvIdatBGJSMrS_kq9Zvj6xS7tcEJHRhAAAWUE'}\nINFO     log:logger_util.py:76 文件上传：None\nINFO     log:logger_util.py:76 响应头：content_type:application/json; encoding=utf-8\nINFO     log:logger_util.py:76 预期结果：[{'equals': {'status_code': 200}}, {'contains': 'tags'}]\nINFO     log:logger_util.py:76 实际结果：{'tags': [{'id': 2, 'name': '星标组', 'count': 0}, {'id': 103, 'name': '\\\\u7801\\\\u5c1a\\\\u6559\\\\u80b268320', 'count': 0}, {'id': 104, 'name': '\\\\u7801\\\\u5c1a\\\\u6559\\\\u80b234257', 'count': 0}, {'id': 112, 'name': '\\\\u88f4\\\\u80b244580', 'count': 0}, {'id': 116, 'name': '\\\\u88f4\\\\u80b220177', 'count': 0}, {'id': 119, 'name': '\\\\u88f4\\\\u80b265336', 'count': 0}, {'id': 123, 'name': '\\\\u88f4\\\\u80b285073', 'count': 0}, {'id': 124, 'name': '\\\\u88f4\\\\u80b293171', 'count': 0}, {'id': 125, 'name': '\\\\u88f4\\\\u80b266545', 'count': 0}, {'id': 126, 'name': '\\\\u88f4\\\\u80b233090', 'count': 0}, {'id': 127, 'name': '\\\\u88f4\\\\u80b269630', 'count': 0}, {'id': 128, 'name': '\\\\u88f4\\\\u80b227557', 'count': 0}, {'id': 129, 'name': '\\\\u88f4\\\\u80b218014', 'count': 0}, {'id': 130, 'name': '\\\\u88f4\\\\u80b271408', 'count': 0}, {'id': 133, 'name': '\\\\u88f4\\\\u80b210685', 'count': 0}, {'id': 135, 'name': '\\\\u88f4\\\\u80b268649', 'count': 0}, {'id': 136, 'name': '\\\\u88f4\\\\u80b233315', 'count': 0}, {'id': 137, 'name': '\\\\u88f4\\\\u80b217810', 'count': 0}, {'id': 138, 'name': '\\\\u88f4\\\\u80b239674', 'count': 0}, {'id': 139, 'name': '\\\\u88f4\\\\u80b248963', 'count': 0}, {'id': 140, 'name': '\\\\u88f4\\\\u80b241031', 'count': 0}, {'id': 141, 'name': '\\\\u88f4\\\\u80b272311', 'count': 0}, {'id': 142, 'name': '\\\\u88f4\\\\u80b262641', 'count': 0}, {'id': 143, 'name': '\\\\u88f4\\\\u80b289235', 'count': 0}, {'id': 144, 'name': '\\\\u88f4\\\\u80b212443', 'count': 0}, {'id': 145, 'name': '\\\\u88f4\\\\u80b294060', 'count': 0}, {'id': 146, 'name': '\\\\u88f4\\\\u80b257345', 'count': 0}, {'id': 147, 'name': '\\\\u88f4\\\\u80b246286', 'count': 0}, {'id': 148, 'name': '\\\\u88f4\\\\u80b247599', 'count': 0}, {'id': 149, 'name': '\\\\u88f4\\\\u80b292875', 'count': 0}, {'id': 150, 'name': '\\\\u88f4\\\\u80b234537', 'count': 0}, {'id': 151, 'name': '\\\\u88f4\\\\u80b246457', 'count': 0}, {'id': 152, 'name': '\\\\u88f4\\\\u80b268551', 'count': 0}, {'id': 153, 'name': '\\\\u88f4\\\\u80b241272', 'count': 0}, {'id': 154, 'name': '\\\\u88f4\\\\u80b249573', 'count': 0}, {'id': 155, 'name': '\\\\u88f4\\\\u80b217627', 'count': 0}, {'id': 156, 'name': '\\\\u88f4\\\\u80b220487', 'count': 0}, {'id': 157, 'name': '\\\\u88f4\\\\u80b284776', 'count': 0}, {'id': 158, 'name': '\\\\u88f4\\\\u80b287285', 'count': 0}, {'id': 159, 'name': '\\\\u88f4\\\\u80b251030', 'count': 0}, {'id': 160, 'name': '\\\\u88f4\\\\u80b270010', 'count': 0}, {'id': 161, 'name': '\\\\u88f4\\\\u80b277243', 'count': 0}, {'id': 162, 'name': '\\\\u88f4\\\\u80b279504', 'count': 0}, {'id': 163, 'name': '\\\\u88f4\\\\u80b226274', 'count': 0}, {'id': 164, 'name': '\\\\u88f4\\\\u80b280731', 'count': 0}, {'id': 165, 'name': '\\\\u88f4\\\\u80b264407', 'count': 0}, {'id': 166, 'name': '\\\\u88f4\\\\u80b246371', 'count': 0}, {'id': 167, 'name': '\\\\u88f4\\\\u80b227352', 'count': 0}, {'id': 168, 'name': '\\\\u88f4\\\\u80b223822', 'count': 0}, {'id': 169, 'name': '\\\\u88f4\\\\u80b219701', 'count': 0}, {'id': 170, 'name': '\\\\u88f4\\\\u80b289513', 'count': 0}, {'id': 172, 'name': '\\\\u88f4\\\\u80b278223', 'count': 0}, {'id': 173, 'name': '\\\\u88f4\\\\u80b244588', 'count': 0}, {'id': 174, 'name': '\\\\u88f4\\\\u80b293806', 'count': 0}, {'id': 175, 'name': '\\\\u88f4\\\\u80b290489', 'count': 0}, {'id': 176, 'name': '\\\\u88f4\\\\u80b289428', 'count': 0}, {'id': 177, 'name': '\\\\u88f4\\\\u80b217524', 'count': 0}, {'id': 178, 'name': '\\\\u88f4\\\\u80b263781', 'count': 0}, {'id': 179, 'name': '\\\\u88f4\\\\u80b223704', 'count': 0}, {'id': 180, 'name': '\\\\u88f4\\\\u80b278742', 'count': 0}, {'id': 181, 'name': '\\\\u88f4\\\\u80b288599', 'count': 0}, {'id': 183, 'name': '\\\\u88f4\\\\u80b287793', 'count': 0}, {'id': 184, 'name': '\\\\u88f4\\\\u80b277974', 'count': 0}, {'id': 185, 'name': '\\\\u88f4\\\\u80b274527', 'count': 0}, {'id': 186, 'name': '\\\\u88f4\\\\u80b261965', 'count': 0}, {'id': 188, 'name': '\\\\u88f4\\\\u80b218823', 'count': 0}, {'id': 189, 'name': '\\\\u88f4\\\\u80b263129', 'count': 0}, {'id': 191, 'name': '\\\\u88f4\\\\u80b281128', 'count': 0}, {'id': 192, 'name': '\\\\u88f4\\\\u80b238284', 'count': 0}, {'id': 193, 'name': '\\\\u88f4\\\\u80b239892', 'count': 0}, {'id': 194, 'name': '\\\\u88f4\\\\u80b248768', 'count': 0}, {'id': 195, 'name': '\\\\u88f4\\\\u80b297647', 'count': 0}, {'id': 196, 'name': '\\\\u88f4\\\\u80b291493', 'count': 0}, {'id': 197, 'name': '\\\\u88f4\\\\u80b248299', 'count': 0}, {'id': 198, 'name': '\\\\u88f4\\\\u80b282096', 'count': 0}, {'id': 199, 'name': '\\\\u88f4\\\\u80b271113', 'count': 0}, {'id': 200, 'name': '\\\\u88f4\\\\u80b290603', 'count': 0}, {'id': 201, 'name': '裴育测试标签', 'count': 0}, {'id': 202, 'name': '裴育', 'count': 0}, {'id': 203, 'name': '裴育1686993062', 'count': 0}, {'id': 204, 'name': '裴育1686993194', 'count': 0}, {'id': 205, 'name': '裴育1686993358936', 'count': 0}, {'id': 206, 'name': '裴育1686996078107', 'count': 0}, {'id': 207, 'name': '裴育1686996986686', 'count': 0}, {'id': 208, 'name': '裴育1686997381111', 'count': 0}, {'id': 209, 'name': '裴育1686997584400', 'count': 0}, {'id': 210, 'name': '裴育1686997700807', 'count': 0}, {'id': 211, 'name': '\\\\u88f4\\\\u80b285222', 'count': 0}, {'id': 212, 'name': '\\\\u88f4\\\\u80b220759', 'count': 0}, {'id': 213, 'name': '\\\\u88f4\\\\u80b274022', 'count': 0}, {'id': 214, 'name': '\\\\u88f4\\\\u80b221578', 'count': 0}, {'id': 215, 'name': '\\\\u88f4\\\\u80b258983', 'count': 0}, {'id': 216, 'name': '\\\\u88f4\\\\u80b258681', 'count': 0}, {'id': 217, 'name': '\\\\u88f4\\\\u80b230757', 'count': 0}, {'id': 218, 'name': '\\\\u88f4\\\\u80b229447', 'count': 0}, {'id': 219, 'name': '\\\\u88f4\\\\u80b242916', 'count': 0}, {'id': 220, 'name': '\\\\u88f4\\\\u80b267269', 'count': 0}, {'id': 221, 'name': '\\\\u88f4\\\\u80b242422', 'count': 0}, {'id': 222, 'name': '\\\\u88f4\\\\u80b293863', 'count': 0}, {'id': 223, 'name': '\\\\u88f4\\\\u80b243594', 'count': 0}, {'id': 224, 'name': '\\\\u88f4\\\\u80b285054', 'count': 0}]}\nINFO     log:logger_util.py:76 接口请求成功！\nINFO     log:logger_util.py:76 ---------------------------------------接口请求结束---------------------------------------\n", 'result': 1, 'duration': 0.14472940005362034, 'doc': '', 'time': '2023-08-05 07:40:39'}, {'id': 1691192439.937929, 'title': 'testcases/weixin/test_weixin.py::TestFlag::test_edit_flag[caseinfo0]', 'logs': "Captured log call\nINFO     log:logger_util.py:76 ---------------------------------------接口请求开始---------------------------------------\nINFO     log:logger_util.py:76 接口名称：编辑标签\nINFO     log:logger_util.py:76 请求方式:post\nINFO     log:logger_util.py:76 请求路径:https://api.weixin.qq.com/cgi-bin/tags/update?access_token=71_aWVLgb4Py_DoS8pkm9bEE3MwJLYjakc9R0ogfcry7IT7CZ29Eeo4g9fLeGLZrATWB43s1_rClXOJYPlz_vPimeS0CHHMFY3rUvIdatBGJSMrS_kq9Zvj6xS7tcEJHRhAAAWUE\nINFO     log:logger_util.py:76 请求头：{}\nINFO     log:logger_util.py:76 请求参数：{'tag': {'id': 113, 'name': '裴育35027'}}\nINFO     log:logger_util.py:76 文件上传：None\nINFO     log:logger_util.py:76 响应头：content_type:application/json; encoding=utf-8\nINFO     log:logger_util.py:76 预期结果：[{'equals': {'errcode': 0}}, {'equals': {'errmsg': 'ok'}}]\nINFO     log:logger_util.py:76 实际结果：{'errcode': 0, 'errmsg': 'ok'}\nINFO     log:logger_util.py:76 接口请求成功！\nINFO     log:logger_util.py:76 ---------------------------------------接口请求结束---------------------------------------\n", 'result': 1, 'duration': 0.5090578002855182, 'doc': '', 'time': '2023-08-05 07:40:39'}, {'id': 1691192440.1386957, 'title': 'testcases/weixin/test_weixin.py::TestFlag::test_delete_flag[caseinfo0]', 'logs': "Captured log call\nINFO     log:logger_util.py:76 ---------------------------------------接口请求开始---------------------------------------\nINFO     log:logger_util.py:76 接口名称：删除标签\nINFO     log:logger_util.py:76 请求方式:post\nINFO     log:logger_util.py:76 请求路径:https://api.weixin.qq.com/cgi-bin/tags/delete?access_token=71_aWVLgb4Py_DoS8pkm9bEE3MwJLYjakc9R0ogfcry7IT7CZ29Eeo4g9fLeGLZrATWB43s1_rClXOJYPlz_vPimeS0CHHMFY3rUvIdatBGJSMrS_kq9Zvj6xS7tcEJHRhAAAWUE\nINFO     log:logger_util.py:76 请求头：{}\nINFO     log:logger_util.py:76 请求参数：{'tag': {'id': 113}}\nINFO     log:logger_util.py:76 文件上传：None\nINFO     log:logger_util.py:76 响应头：content_type:application/json; encoding=utf-8\nINFO     log:logger_util.py:76 预期结果：[{'equals': {'errcode': 0}}, {'equals': {'errmsg': 'ok'}}]\nINFO     log:logger_util.py:76 实际结果：{'errcode': 0, 'errmsg': 'ok'}\nINFO     log:logger_util.py:76 接口请求成功！\nINFO     log:logger_util.py:76 ---------------------------------------接口请求结束---------------------------------------\n", 'result': 1, 'duration': 0.18837650027126074, 'doc': '', 'time': '2023-08-05 07:40:40'}, {'id': 1691192440.3613732, 'title': 'testcases/weixin/test_weixin.py::TestFlag::test_upload_file[caseinfo0]', 'logs': 'Captured log call\nINFO     log:logger_util.py:76 ---------------------------------------接口请求开始---------------------------------------\nINFO     log:logger_util.py:76 接口名称：文件上传接口\nINFO     log:logger_util.py:76 请求方式:post\nINFO     log:logger_util.py:76 请求路径:https://api.weixin.qq.com/cgi-bin/media/uploadimg?access_token=71_aWVLgb4Py_DoS8pkm9bEE3MwJLYjakc9R0ogfcry7IT7CZ29Eeo4g9fLeGLZrATWB43s1_rClXOJYPlz_vPimeS0CHHMFY3rUvIdatBGJSMrS_kq9Zvj6xS7tcEJHRhAAAWUE\nINFO     log:logger_util.py:76 请求头：{}\nINFO     log:logger_util.py:76 文件上传：{\'media\': <_io.BufferedReader name=\'./logo.jpg\'>}\nINFO     log:logger_util.py:76 响应头：content_type:text/plain\nINFO     log:logger_util.py:76 预期结果：[{\'equals\': {\'status_code\': 200}}, {\'contains\': \'url\'}]\nINFO     log:logger_util.py:76 实际结果：{"url":"http:\\/\\/mmbiz.qpic.cn\\/mmbiz_png\\/6xVTVmZiagzSibzx8TibK2btxnI18YUVDTOcJcluSLZfwZFkktiaiangHUSuF85YuTNzeHvnyYHiaMrfYFNyD3O4zk5w\\/0"}\nINFO     log:logger_util.py:76 接口请求成功！\nINFO     log:logger_util.py:76 -------------------------------------------接口请求结束---------------------------------------------\n', 'result': 1, 'duration': 0.21654799953103065, 'doc': '', 'time': '2023-08-05 07:40:40'}],
+          logs:'',
+          summary: {'total': 8, 'success': 8, 'failed': 0, 'success_rate': 1.0, 'fail_rate': 0.0, 'duration': 1.861435699276626, 'avg_duration': 0.23267946240957826},
+          expands: [],
+          getRowKeys (row) {
+            return row.id
+          },
+          currentPage: 1,
+            pageSize: 10
+        }
+      },
+      methods:{
+        count(index) {
+            return (this.currentPage - 1) * this.pageSize + index + 1
+        },
+        expend(row, expandedRows){
+            var that = this
+            if (expandedRows.length) {
+              that.expands = []
+              if (row) {
+                that.expands.push(row.id)
+              }
+            } else {
+              that.expands = []
+            }
+        },
+        filterTag(value, row) {
+          return row.result === value;
+        },
+        handleSizeChange(val) {
+            this.pageSize = val;
+          },
+        handleCurrentChange(val) {
+            this.currentPage=val;
+        },
+        fliterChange(filters){
+            const filterskey = filters.result;
+            console.log(filterskey)
+            if (filterskey.length>0) {
+              this.data = this.tableData.filter(data => {
+
+                  return data['result'] === filterskey[0] | data['result'] === filterskey[1];
+              });
+              this.currentPage = 1;
+              return this.data;
+            }
+            this.data = this.tableData;
+            this.currentPage = 1;
+            return this.data
+        },
+      },
+      mounted(){
+        this.data = this.tableData;
+      }
+    })
+  </script>
+
+  <script type="text/javascript">
+
+var chartDom = document.getElementById('main');
+var myChart = echarts.init(chartDom);
+var option;
+
+option = {
+    series: [{
+        type: 'gauge',
+        startAngle: 180,
+        endAngle: 0,
+        min: 0,
+        max: 1,
+        splitNumber: 8,
+        axisLine: {
+            lineStyle: {
+                width: 6,
+                color: [
+                    [0.25, '#FF6E76'],
+                    [0.5, '#FDDD60'],
+                    [0.75, 'darkslateblue'],
+                    [1, '#97cc64']
+                ]
+            }
+        },
+        pointer: {
+            icon: 'path://M12.8,0.7l12,40.1H0.7L12.8,0.7z',
+            length: '12%',
+            width: 20,
+            offsetCenter: [0, '-60%'],
+            itemStyle: {
+                color: 'auto'
+            }
+        },
+        axisTick: {
+            length: 12,
+            lineStyle: {
+                color: 'auto',
+                width: 2
+            }
+        },
+        splitLine: {
+            length: 20,
+            lineStyle: {
+                color: 'auto',
+                width: 5
+            }
+        },
+        axisLabel: {
+            color: '#464646',
+            fontSize: 20,
+            distance: -60,
+            formatter: function (value) {
+                if (value === 0.875) {
+                    return '优';
+                }
+                else if (value === 0.625) {
+                    return '中';
+                }
+                else if (value === 0.375) {
+                    return '良';
+                }
+                else if (value === 0.125) {
+                    return '差';
+                }
+            }
+        },
+        title: {
+            offsetCenter: [0, '-20%'],
+            fontSize: 30
+        },
+        detail: {
+            fontSize: 30,
+            offsetCenter: [0, '30%'],
+            valueAnimation: true,
+            formatter: function (value) {
+                return Math.round(value * 100) + '%';
+            },
+            color: 'auto'
+        },
+        data: [{
+            value: 1.0,
+            name: '执行成功率'
+        }]
+    }]
+};
+
+option && myChart.setOption(option);
+
+</script>
+  <script type="text/javascript">
+    var chartDom = document.getElementById('main2');
+    var myChart = echarts.init(chartDom);
+    var option;
+
+option = {
+    title: {
+        text: '用例执行情况',
+        subtext: '本次执行成功失败比例',
+        left: 'center'
+    },
+    tooltip: {
+        trigger: 'item'
+    },
+    legend: {
+        orient: 'vertical',
+        left: 'left',
+    },
+    series: [
+        {
+            name: '访问来源',
+            type: 'pie',
+            radius: '50%',
+            data: [{'value': 8, 'name': 'Success', 'itemStyle': {'color': '#97cc64'}}, {'value': 0, 'name': 'Failed', 'itemStyle': {'color': '#fd5a3e'}}],
+            emphasis: {
+                itemStyle: {
+                    shadowBlur: 10,
+                    shadowOffsetX: 0,
+                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                }
+            }
+        }
+    ]
+};
+
+option && myChart.setOption(option);
+</script>
+
+<style>
+  .el-header, .el-footer {
+    background-color: darkslateblue;
+    text-align: center;
+    color: white;
+    /*line-height: 60px;*/
+  }
+
+  .el-col {
+    margin-right: 10px;
+  }
+
+  .el-card{
+    border-radius: 15px;
+  }
+
+  .el-table .cell {
+    white-space: pre-line;
+
+    }
+  /*.el-aside {*/
+  /*  background-color: #D3DCE6;*/
+  /*  color: #333;*/
+  /*  text-align: center;*/
+  /*  line-height: 400px;*/
+  /*}*/
+</style>
+</html>

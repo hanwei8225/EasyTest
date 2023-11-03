@@ -1,0 +1,12 @@
+INFO     log:logger_util.py:79 ---------------------------------------------接口请求开始---------------------------------------------
+INFO     log:logger_util.py:79 接口名称：appid必填项检查
+INFO     log:logger_util.py:79 请求方式:get
+INFO     log:logger_util.py:79 请求路径:https://api.weixin.qq.com/cgi-bin/token
+INFO     log:logger_util.py:79 请求头：{}
+INFO     log:logger_util.py:79 请求参数：{'appid': '', 'secret': '4fa4582bf6b362742f079a3b7709ccad', 'grant_type': 'client_credential'}
+INFO     log:logger_util.py:79 文件上传：None
+INFO     log:logger_util.py:79 响应头：content_type:application/json; encoding=utf-8
+INFO     log:logger_util.py:79 预期结果：[{'equals': {'status_code': 200}}, {'contains': 'errcode'}]
+INFO     log:logger_util.py:79 实际结果：{'errcode': 41002, 'errmsg': 'appid missing rid: 6506d653-6441fd3a-5e2d9de0'}
+INFO     log:logger_util.py:79 接口请求成功！
+INFO     log:logger_util.py:79 --------------------------------------------接口请求结束--------------------------------------------

@@ -1,0 +1,16 @@
+.side-nav__brand {
+  background: url('logo.png') no-repeat left center !important;
+  margin-left: 10px;
+  height: 100px;
+  font-size: 26px;
+  line-height: 100px;
+  font-weight: 800;
+  background‐size: contain !important;
+}
+.side-nav__brand-text {
+  display: none;
+}
+.side-nav__brand:after{
+    content: "裴育";
+    margin-left: 30px;
+}
